@@ -14,13 +14,19 @@ class ODriveTester:
         while self.test_drive.axis0.current_state != AXIS_STATE_IDLE:
             time.sleep(0.1)
 
-        self.test_drive.axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+         # this says that it will hold the motor at a given position
+         # self.test_drive.axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
     def set_pos(self, pos):
         '''set pos of the current found motor'''
         self.test_drive.axis0.controller.pos_setpoint = pos
 
     def set_vel(self, vel):
-        return None
+        self.test_drive.axis.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL
+        if vel > self.test_drive.axis.controller.config.vel_limit:
+            print("Velocity given greater than velocity limit. Please adjust"
+                  "velocity limit or lower velocity")
+        else:
+            self.test_drive.axis.controller.vel_setpoint = vel
 
     def get_current_and_voltage_readings(self):
         '''gets IV readings from important areas'''
@@ -54,6 +60,9 @@ class ODriveTester:
             'motor_config' : motor_cfg
         }
 
+    def save_config(self):
+        self.test_drive.save_configuration()
+
     def clear_all_settings(self):
         '''
         meant to clear all current positions and velocities so
@@ -80,7 +89,25 @@ def start_odrive_repl():
     starts a repl for controlling the odrive,
     also should post IV and parameters asynchronously
     '''
+
+    # TODO: have a thread that posts current config and 
+    # readings to a window
+
+    # Use the terminal for repl
     my_odrive = ODriveTester()
+    not_done = True
+    while not_done:
+        # expect method then atrributes seperated by spaces
+        control = input('Control: ')
+        method_and_params = control.split(' ')
+        if method_and_params[0] == 'exit':
+            not_done = False
+            continue
+        try:
+            # calls the method with its params
+            getattr(my_odrive, method_and_params[0])(*method_and_params[1:])
+        except AttributeError:
+            print('Incorrect Control')
 
 if __name__ == '__main__':
     start_odrive_repl()
